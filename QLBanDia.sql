@@ -232,20 +232,88 @@ GO
 		on tChiTietHDN
 		after insert
 		as begin
-			declare @mahdn nvarchar(10), @madia nvarchar(10),@slkho int, @slnhap int, @dg float
+			declare @mahdn nvarchar(10), @madia nvarchar(10),@slkho int, @slnhap int, @dg float, @tongtienhd float
 			select @mahdn = SoHDN from inserted
 			select @madia = MaDia from inserted
 			select @slnhap = SoLuong from inserted
 			select @dg = DonGia from inserted
-
 			select @slkho = SoLuong from tKhoDia where MaDia = @madia
+			
+			select @tongtienhd = sum(cthdn.ThanhTien) from tHoaDonNhap hdn join tChiTietHDN cthdn on hdn.SoHDN = cthdn.SoHDN
+			where cthdn.SoHDN = @mahdn
+			group by cthdn.SoHDN
+
 		
 			update tKhoDia set SoLuong = @slkho + @slnhap where MaDia = @madia
 			update tKhoDia set DonGiaNhap = @dg where MaDia = @madia
 			update tKhoDia set DonGiaBan = @dg*1.1 where MaDia = @madia
-			update tChiTietHDN set ThanhTien = @dg*@slnhap where SoHDN = @mahdn
+			update tChiTietHDN set ThanhTien = @dg*@slnhap where SoHDN = @mahdn and MaDia = @madia
+			update tHoaDonNhap set TongTien = @tongtienhd where SoHDN = @mahdn
 		end
+		--2
+		
 
+		use QuanLyBanDia
+		go
 
 	-- procedure
-	exec USP_GetAlbumList
+		exec USP_GetAlbumList
+
+		exec TaoHoaDonNhap @sohdn = N'HD2', @manv = N'HIEUTT1', @nhacc = N'NCC01';
+
+		--insert hoadonnhap
+		CREATE PROC [dbo].[TaoHoaDonNhap]
+		@sohdn nvarchar(10), @manv nvarchar(10), @nhacc nvarchar(10)
+		AS
+		BEGIN
+			INSERT dbo.tHoaDonNhap 
+					( SoHDN ,
+					  MaNV ,
+					  NgayNhap ,
+					  MaNCC,
+					  TongTien
+					)
+			VALUES  ( 
+					  @sohdn,
+					  @manv,
+					  GETDATE() , 
+					  @nhacc, 
+					  0
+					)
+		END
+		GO
+		
+				exec USP_GetAlbumList
+
+		exec TaoHoaDonNhap @sohdn = N'HD2', @manv = N'HIEUTT1', @nhacc = N'NCC01';
+
+		exec ThemChiTietHoaDonNhap @sohdn = N'HD1', @madia = N'CDMON', @soluong = 9,@gia = 1200000;
+
+		--insert chitiethoadonnhap
+		CREATE PROC [dbo].[ThemChiTietHoaDonNhap]
+		@sohdn nvarchar(10), @madia nvarchar(10), @soluong int, @gia float
+		AS
+		BEGIN
+			INSERT dbo.tChiTietHDN 
+					( SoHDN ,
+					  MaDia ,
+					  SoLuong ,
+					  GiamGia,
+					  DonGia,
+					  ThanhTien
+					)
+			VALUES  ( 
+					  @sohdn,
+					  @madia,
+					  @soluong ,
+					  1,
+					  @gia, 
+					  0
+					)
+		END
+		GO
+
+
+		select * from tHoaDonNhap
+		select * from tChiTietHDN
+		select * from tKhoDia
